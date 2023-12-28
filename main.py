@@ -1,6 +1,8 @@
 import telebot
 from telebot import types
 import os
+import re
+
 
 
 TOKEN = "6378053363:AAFDlqyTZqpKvqtn5zXhzHT3uJDZXHjtyiQ"
@@ -18,10 +20,19 @@ properties = [
         "rooms": 1,
         "area": 60,
         "budget": 1100,
-        "description": "Затишна квартира з видом на парк...",
-        "photos": ["path/to/photo1.jpg", "path/to/photo2.jpg"]
+        "description": "Бля кв реіл топ, дай боже таку знімати ",
+        "photos": ["D:\\KSE\\Webinclass\\RieltorBot\\RieltorBot\\PrestigeHall\\photo_2023-12-18_23-45-22 (2).jpg"]
     },
-    # Додайте тут інші квартири
+     {
+        "id": 124,
+        "district": "Шевченківський",
+        "rooms": 1,
+        "area": 55,
+        "budget": 800,
+        "description": "Хуйня",
+        "photos": ["D:\\KSE\\Webinclass\\RieltorBot\\RieltorBot\\PrestigeHall\\photo_2023-12-18_23-45-22.jpg"]
+    },
+
 ]
 
 def get_prev_step(chat_id):
@@ -29,16 +40,29 @@ def get_prev_step(chat_id):
     return STEPS[max(0, current_index - 1)]
 
 
+import re
+
+def extract_number(text):
+    # Витягує перше число з рядка
+    match = re.search(r'\d+', text)
+    return int(match.group()) if match else None
+
 def filter_properties(chat_id):
     filtered_properties = []
     user_selections = user_data[chat_id]
     for property in properties:
+        # Отримуємо числові значення з рядків користувача
+        user_rooms = extract_number(user_selections['room'])
+        user_area = extract_number(user_selections['area'])
+        user_budget = extract_number(user_selections['budget'])
+
         if (property['district'] == user_selections['district'] and
-            property['rooms'] == user_selections['room'].split('-')[0] and  # Використовуємо першу частину рядка для порівняння
-            property['area'] <= int(user_selections['area']) and
-            property['budget'] <= int(user_selections['budget'])):
+            property['rooms'] == user_rooms and
+            property['area'] <= user_area and
+            property['budget'] <= user_budget):
             filtered_properties.append(property)
     return filtered_properties
+
 
 def send_filtered_properties(chat_id, filtered_properties):
     if not filtered_properties:
@@ -88,7 +112,7 @@ def handle_query(call):
 def handle_start(message):
     chat_id = message.chat.id
     user_data[chat_id] = {'current_step': 'district'}
-    bot.send_message(chat_id, "Привіт! Почнемо вибір району.", reply_markup=create_district_keyboard())
+    bot.send_message(chat_id, "`ЖитлоБот` - це інтелектуальний телеграм-бот, який призначений для полегшення процесу пошуку та вибору житла. Бот створений з метою забезпечити користувачам швидкий та зручний доступ до актуальної інформації про квартири в оренду", reply_markup=create_district_keyboard())
 
 def create_district_keyboard():
     keyboard = types.InlineKeyboardMarkup()
