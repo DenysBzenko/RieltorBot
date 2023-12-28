@@ -1,0 +1,9 @@
+{
+  "id": 123,
+  "district": "Печерський",
+  "rooms": 1,
+  "area": 60,
+  "budget": 1100,
+  "description": "Затишна квартира з видом на парк...",
+  "photos": ["D:\\KSE\\Webinclass\\RieltorBot\\RieltorBot\\PrestigeHall\\photo_2023-12-18_23-45-22.jpg", "D:\\KSE\\Webinclass\\RieltorBot\\RieltorBot\\PrestigeHall\\photo_2023-12-18_23-45-22 (2).jpg"]
+}

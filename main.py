@@ -1,5 +1,6 @@
 import telebot
 from telebot import types
+import os
 
 
 TOKEN = "6378053363:AAFDlqyTZqpKvqtn5zXhzHT3uJDZXHjtyiQ"
@@ -10,13 +11,49 @@ user_data = {}
 
 
 STEPS = ['district', 'room', 'area', 'budget']
-
+properties = [
+    {
+        "id": 123,
+        "district": "Печерський",
+        "rooms": 1,
+        "area": 60,
+        "budget": 1100,
+        "description": "Затишна квартира з видом на парк...",
+        "photos": ["path/to/photo1.jpg", "path/to/photo2.jpg"]
+    },
+    # Додайте тут інші квартири
+]
 
 def get_prev_step(chat_id):
     current_index = STEPS.index(user_data[chat_id]['current_step'])
     return STEPS[max(0, current_index - 1)]
 
 
+def filter_properties(chat_id):
+    filtered_properties = []
+    user_selections = user_data[chat_id]
+    for property in properties:
+        if (property['district'] == user_selections['district'] and
+            property['rooms'] == user_selections['room'].split('-')[0] and  # Використовуємо першу частину рядка для порівняння
+            property['area'] <= int(user_selections['area']) and
+            property['budget'] <= int(user_selections['budget'])):
+            filtered_properties.append(property)
+    return filtered_properties
+
+def send_filtered_properties(chat_id, filtered_properties):
+    if not filtered_properties:
+        bot.send_message(chat_id, "На жаль, за вашими критеріями нічого не знайдено.")
+        return
+    for property in filtered_properties:
+        message = f"Опис: {property['description']}\nРайон: {property['district']}\nКімнат: {property['rooms']}\nПлоща: {property['area']}м²\nБюджет: ${property['budget']}"
+        bot.send_message(chat_id, message)
+        for photo in property['photos']:
+            if os.path.exists(photo):
+                bot.send_photo(chat_id, photo=open(photo, 'rb'))
+            else:
+                bot.send_message(chat_id, "[Фото недоступне]")
+
+# Оновлення функції handle_choice для включення фільтрації та відправлення даних
 def handle_choice(chat_id, data, message_id):
     current_step = user_data[chat_id]['current_step']
     user_data[chat_id][current_step] = data.split('_')[1]
@@ -28,11 +65,10 @@ def handle_choice(chat_id, data, message_id):
         user_data[chat_id]['current_step'] = next_step
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f"Вибрано {data.split('_')[1]}. Ваш наступний вибір:", reply_markup=get_keyboard(next_step))
     else:
+        # Фільтрація та відправлення результатів
+        filtered_properties = filter_properties(chat_id)
+        send_filtered_properties(chat_id, filtered_properties)
 
-        summary = "\n".join([f"{key}: {value}" for key, value in user_data[chat_id].items() if key != 'current_step'])
-        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f"Фільтрація завершена! Ось ваші вибори:\n{summary}")
-
-# Обробник всіх запитів від inline клавіатур
 @bot.callback_query_handler(func=lambda call: True)
 def handle_query(call):
     chat_id = call.message.chat.id
