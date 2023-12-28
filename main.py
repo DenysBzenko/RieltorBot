@@ -1,53 +1,58 @@
 import telebot
 from telebot import types
 
-# Створення бота
-bot = telebot.TeleBot("6378053363:AAFDlqyTZqpKvqtn5zXhzHT3uJDZXHjtyiQ")
+# Токен бота
+TOKEN = "6378053363:AAFDlqyTZqpKvqtn5zXhzHT3uJDZXHjtyiQ"
+bot = telebot.TeleBot(TOKEN)
 
 # Зберігання даних користувача
 user_data = {}
 
-# Обробник вітального повідомлення
+# Послідовність кроків
+STEPS = ['district', 'room', 'area', 'budget']
+
+# Функція для отримання попереднього кроку
+def get_prev_step(chat_id):
+    current_index = STEPS.index(user_data[chat_id]['current_step'])
+    return STEPS[max(0, current_index - 1)]
+
+# Функція для обробки вибору користувача
+def handle_choice(chat_id, data, message_id):
+    current_step = user_data[chat_id]['current_step']
+    user_data[chat_id][current_step] = data.split('_')[1]
+
+    next_step_index = STEPS.index(current_step) + 1
+    if next_step_index < len(STEPS):
+        # Перехід до наступного кроку
+        next_step = STEPS[next_step_index]
+        user_data[chat_id]['current_step'] = next_step
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f"Вибрано {data.split('_')[1]}. Ваш наступний вибір:", reply_markup=get_keyboard(next_step))
+    else:
+        # Всі вибори зроблено, виведення результатів
+        summary = "\n".join([f"{key}: {value}" for key, value in user_data[chat_id].items() if key != 'current_step'])
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f"Фільтрація завершена! Ось ваші вибори:\n{summary}")
+
+# Обробник всіх запитів від inline клавіатур
+@bot.callback_query_handler(func=lambda call: True)
+def handle_query(call):
+    chat_id = call.message.chat.id
+    data = call.data
+
+    if data == 'back':
+        # Користувач натиснув кнопку "Назад"
+        prev_step = get_prev_step(chat_id)
+        user_data[chat_id]['current_step'] = prev_step
+        bot.edit_message_text(chat_id=chat_id, message_id=call.message.message_id, text=f"Повертаємось на крок: {prev_step}", reply_markup=get_keyboard(prev_step))
+    else:
+        # Обробка вибору користувача
+        handle_choice(chat_id, data, call.message.message_id)
+
+# Вітальне повідомлення
 @bot.message_handler(commands=['start'])
 def handle_start(message):
-    user_data[message.chat.id] = {}
-    bot.send_message(message.chat.id, "Привіт! Виберіть район:", reply_markup=create_district_keyboard())
-
-# Обробник вибору району
-@bot.callback_query_handler(func=lambda call: call.data.startswith('district_'))
-def handle_district_choice(call):
-    district = call.data.split('_')[1]
-    user_data[call.message.chat.id]['district'] = district
-    bot.send_message(call.message.chat.id, f"Вибрано район: {district}\nВиберіть кількість кімнат:", reply_markup=create_room_keyboard())
-
-# Обробник вибору кількості кімнат
-@bot.callback_query_handler(func=lambda call: call.data.startswith('room_'))
-def handle_room_choice(call):
-    room = call.data.split('_')[1]
-    user_data[call.message.chat.id]['room'] = room
-    bot.send_message(call.message.chat.id, f"Вибрано кількість кімнат: {room}\nВиберіть кількість кв.м:", reply_markup=create_area_keyboard())
-
-# Обробник вибору кількості кв.м
-@bot.callback_query_handler(func=lambda call: call.data.startswith('area_'))
-def handle_area_choice(call):
-    area = call.data.split('_')[1]
-    user_data[call.message.chat.id]['area'] = area
-    bot.send_message(call.message.chat.id, f"Вибрано кількість кв.м: {area}\nВиберіть Ваш максимальний бюджет:", reply_markup=create_budget_keyboard())
-
-# Обробник вибору бюджету
-@bot.callback_query_handler(func=lambda call: call.data.startswith('budget_'))
-def handle_budget_choice(call):
-    budget = call.data.split('_')[1]
-    user_data[call.message.chat.id]['budget'] = budget
-    bot.send_message(call.message.chat.id, f"Вибрано максимальний бюджет: {budget}\nГотово!", reply_markup=create_summary_keyboard(call.message.chat.id))
-
-# Обробник натискання кнопок зі стиснутим текстом
-@bot.callback_query_handler(func=lambda call: call.data == 'back')
-def callback_handler(call):
-    chat_id = call.message.chat.id
-    # Повернутися на попередній крок
-    prev_step = user_data[chat_id].get('prev_step', 'start')
-    bot.send_message(chat_id, f"Повертаємось на крок: {prev_step}", reply_markup=prev_step_keyboard(prev_step))
+    chat_id = message.chat.id
+    user_data[chat_id] = {'current_step': 'district'}
+    bot.send_message(chat_id, "Привіт! Почнемо вибір району.", reply_markup=create_district_keyboard())
 
 # Функції для створення клавіатур з кнопками
 def create_district_keyboard():
@@ -78,20 +83,22 @@ def create_budget_keyboard():
     keyboard.add(*buttons)
     return keyboard
 
-def create_summary_keyboard(chat_id):
+# Функція для отримання клавіатури залежно від кроку
+def get_keyboard(step):
     keyboard = types.InlineKeyboardMarkup()
-    keyboard.add(types.InlineKeyboardButton(text="Назад", callback_data="back"))
-    return keyboard
-
-def prev_step_keyboard(prev_step):
-    if prev_step == 'start':
+    # Додати кнопку "Назад" (крім першого кроку)
+    if step != 'district':
+        keyboard.add(types.InlineKeyboardButton(text="Назад", callback_data="back"))
+    # Визначення клавіатур для кожного кроку
+    if step == 'district':
         return create_district_keyboard()
-    elif prev_step == 'district':
+    elif step == 'room':
         return create_room_keyboard()
-    elif prev_step == 'room':
+    elif step == 'area':
         return create_area_keyboard()
-    elif prev_step == 'area':
+    elif step == 'budget':
         return create_budget_keyboard()
+    return keyboard
 
 # Запуск бота
 if __name__ == '__main__':
