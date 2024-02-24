@@ -20,7 +20,7 @@ properties = [
         "rooms": 1,
         "area": 60,
         "budget": 1100,
-        "description": "Бля кв реіл топ, дай боже таку знімати ",
+        "description": "Квартира дуже чудова ",
         "photos": ["D:\\KSE\\Webinclass\\RieltorBot\\RieltorBot\\PrestigeHall\\photo_2023-12-18_23-45-22 (2).jpg"]
     },
      {
@@ -29,7 +29,7 @@ properties = [
         "rooms": 1,
         "area": 55,
         "budget": 800,
-        "description": "Хуйня",
+        "description": "Непога квартира ",
         "photos": ["D:\\KSE\\Webinclass\\RieltorBot\\RieltorBot\\PrestigeHall\\photo_2023-12-18_23-45-22.jpg"]
     },
 
@@ -43,7 +43,7 @@ def get_prev_step(chat_id):
 import re
 
 def extract_number(text):
-    # Витягує перше число з рядка
+    
     match = re.search(r'\d+', text)
     return int(match.group()) if match else None
 
@@ -51,7 +51,7 @@ def filter_properties(chat_id):
     filtered_properties = []
     user_selections = user_data[chat_id]
     for property in properties:
-        # Отримуємо числові значення з рядків користувача
+        
         user_rooms = extract_number(user_selections['room'])
         user_area = extract_number(user_selections['area'])
         user_budget = extract_number(user_selections['budget'])
@@ -77,19 +77,19 @@ def send_filtered_properties(chat_id, filtered_properties):
             else:
                 bot.send_message(chat_id, "[Фото недоступне]")
 
-# Оновлення функції handle_choice для включення фільтрації та відправлення даних
+
 def handle_choice(chat_id, data, message_id):
     current_step = user_data[chat_id]['current_step']
     user_data[chat_id][current_step] = data.split('_')[1]
 
     next_step_index = STEPS.index(current_step) + 1
     if next_step_index < len(STEPS):
-        # Перехід до наступного кроку
+        
         next_step = STEPS[next_step_index]
         user_data[chat_id]['current_step'] = next_step
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=f"Вибрано {data.split('_')[1]}. Ваш наступний вибір:", reply_markup=get_keyboard(next_step))
     else:
-        # Фільтрація та відправлення результатів
+        
         filtered_properties = filter_properties(chat_id)
         send_filtered_properties(chat_id, filtered_properties)
 
@@ -104,7 +104,7 @@ def handle_query(call):
         user_data[chat_id]['current_step'] = prev_step
         bot.edit_message_text(chat_id=chat_id, message_id=call.message.message_id, text=f"Повертаємось на крок: {prev_step}", reply_markup=get_keyboard(prev_step))
     else:
-        # Обробка вибору користувача
+        
         handle_choice(chat_id, data, call.message.message_id)
 
 
